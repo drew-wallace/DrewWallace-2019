@@ -1,6 +1,7 @@
 const https = require('https')
 const fs = require('fs')
 const crypto = require('crypto')
+const util = require('util')
 
 let clientPasswordHash = ''
 let clientPublicKey = ''
@@ -29,15 +30,10 @@ https.createServer(options, (req, res) => {
 
 async function hashPassword(password) {
     const salt = crypto.randomBytes(16).toString('hex')
+    const pbkdf2 = util.promisify(crypto.pbkdf2)
     try {
-        const hash = await new Promise((resolve, reject) => crypto.pbkdf2(password, salt, 100000, 512, 'sha512', (err, derivedKey) => {
-            if (err) {
-                reject(err)
-            }
-
-            resolve(derivedKey.toString('hex'))
-        }))
-        return `${salt}|${hash}`
+        const hash = await pbkdf2(password, salt, 100000, 512, 'sha512')
+        return `${salt}|${hash.toString('hex')}`
     } catch(err) {
         console.error(err)
         return ''
@@ -46,15 +42,10 @@ async function hashPassword(password) {
 
 async function verifyHash(password, storedSaltHash) {
     const [salt, hash] = storedSaltHash.split('|')
+    const pbkdf2 = util.promisify(crypto.pbkdf2)
     try {
-        const newHash = await new Promise((resolve, reject) => crypto.pbkdf2(password, salt, 100000, 512, 'sha512', (err, derivedKey) => {
-            if (err) {
-                reject(err)
-            }
-
-            resolve(derivedKey.toString('hex'))
-        }))
-        return newHash === hash
+        const newHash = await pbkdf2(password, salt, 100000, 512, 'sha512')
+        return newHash.toString('hex') === hash
     } catch(err) {
         console.error(err)
         return false

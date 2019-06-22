@@ -29,7 +29,7 @@ node server.js
 ```
 node client.js register "this is a test password"
 ```
-3) Create a public/private key and send it to the server to be stored
+3) Create a public/private key and send the public key to the server to be stored
 ```
 node client.js store "this is a test password" "test private key passphrase"
 ```

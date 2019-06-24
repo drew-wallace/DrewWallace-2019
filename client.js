@@ -19,67 +19,27 @@ if (process.argv.length < 4 || process.argv.length > 5) {
 
 
 (async () => {
-    const generateKeyPair = util.promisify(crypto.generateKeyPair)
-    const writeFile = util.promisify(fs.writeFile)
-
     const command = process.argv[2]
 
     const body = {}
 
     switch(command) {
         case 'register':
-            body.password = process.argv[3]
+            register(body, process.argv[3])
             break
         case 'store':
-            body.password = process.argv[3]
-            try {
-                const {publicKey, privateKey} = await generateKeyPair(
-                    'rsa',
-                    {
-                        modulusLength: 4096,
-                        publicKeyEncoding: {
-                            type: 'spki',
-                            format: 'pem'
-                        },
-                        privateKeyEncoding: {
-                            type: 'pkcs8',
-                            format: 'pem',
-                            cipher: 'aes-256-cbc',
-                            passphrase: process.argv[4]
-                        }
-                    }
-                )
-
-                await writeFile('client_private.pem', privateKey, 'utf8')
-
-                body.publicKey = publicKey
-            } catch (err) {
+            const err = await store(body, process.argv[3], process.argv[4])
+            if (err) {
                 console.error(err)
                 return
             }
 
             break
         case 'message':
-            try {
-                const privateKey = crypto.createPrivateKey({
-                    key: fs.readFileSync('client_private.pem'),
-                    type: 'pkcs8',
-                    format: 'pem',
-                    cipher: 'aes-256-cbc',
-                    passphrase: process.argv[3]
-                })
-                const sign = crypto.createSign('SHA256')
-                sign.write(process.argv[4])
-                sign.end()
-                const signature = sign.sign(privateKey, 'hex')
-                console.log(`${Buffer.from(process.argv[4], 'utf8').toString('hex')}|${signature}`)
-            } catch (err) {
-                console.error('Error: Failed to decrypt private key')
-            }
-
+            message(process.argv[3], process.argv[4])
             return
         case 'verify':
-            body.message = process.argv[3]
+            verify(body, process.argv[3])
             break
     }
 
@@ -117,3 +77,63 @@ if (process.argv.length < 4 || process.argv.length > 5) {
 
     req.end()
 })()
+
+function register(body, password) {
+    body.password = password
+}
+
+// RSA public/private key generation: 4096 bit key size, private key encrypted with aes-256-cbc
+async function store(body, password, passphrase) {
+    const generateKeyPair = util.promisify(crypto.generateKeyPair)
+    const writeFile = util.promisify(fs.writeFile)
+
+    body.password = password
+    try {
+        const {publicKey, privateKey} = await generateKeyPair(
+            'rsa',
+            {
+                modulusLength: 4096,
+                publicKeyEncoding: {
+                    type: 'spki',
+                    format: 'pem'
+                },
+                privateKeyEncoding: {
+                    type: 'pkcs8',
+                    format: 'pem',
+                    cipher: 'aes-256-cbc',
+                    passphrase
+                }
+            }
+        )
+
+        await writeFile('client_private.pem', privateKey, 'utf8')
+
+        body.publicKey = publicKey
+    } catch (err) {
+        return err
+    }
+}
+
+// Creates a string containing a message and a signature generated from the client's private key
+function message(passphrase, message) {
+    try {
+        const privateKey = crypto.createPrivateKey({
+            key: fs.readFileSync('client_private.pem'),
+            type: 'pkcs8',
+            format: 'pem',
+            cipher: 'aes-256-cbc',
+            passphrase
+        })
+        const sign = crypto.createSign('SHA256')
+        sign.write(message)
+        sign.end()
+        const signature = sign.sign(privateKey, 'hex')
+        console.log(`${Buffer.from(message, 'utf8').toString('hex')}|${signature}`)
+    } catch (err) {
+        console.error('Error: Failed to decrypt private key')
+    }
+}
+
+function verify(body, message) {
+    body.message = process.argv[3]
+}

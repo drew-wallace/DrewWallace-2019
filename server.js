@@ -11,6 +11,7 @@ const options = {
     cert: fs.readFileSync('server.crt')
 }
 
+// HTTPS server for security in transit
 https.createServer(options, (req, res) => {
     req.on('data', (buffer) => {
         const body = JSON.parse(buffer.toString('utf8'))
@@ -28,10 +29,12 @@ https.createServer(options, (req, res) => {
     })
 }).listen(8000)
 
+// PBKDF2 for security at rest
 async function hashPassword(password) {
     const salt = crypto.randomBytes(16).toString('hex')
     const pbkdf2 = util.promisify(crypto.pbkdf2)
     try {
+        // 16 byte salt, 100,000 iterations (suggested: >=10,000), 512 bit keylength, sha512 hashing algorithm
         const hash = await pbkdf2(password, salt, 100000, 512, 'sha512')
         return `${salt}|${hash.toString('hex')}`
     } catch(err) {
@@ -52,6 +55,7 @@ async function verifyHash(password, storedSaltHash) {
     }
 }
 
+// RSA signature message verification
 function verifyMessage(message, publicKey) {
     let [text, signature] = message.split('|')
     const verifier = crypto.createVerify('SHA256')
@@ -66,6 +70,7 @@ function verifyMessage(message, publicKey) {
     }
 }
 
+// Only allowing one client "account" to be registered
 async function register(res, password) {
     if (!!clientPasswordHash) {
         res.writeHead(401)

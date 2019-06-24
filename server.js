@@ -69,7 +69,7 @@ function verifyMessage(message, publicKey) {
 async function register(res, password) {
     if (!!clientPasswordHash) {
         res.writeHead(401)
-        res.end('Error: client already registered register')
+        res.end('Error: Client already registered register')
         return
     }
 
@@ -80,7 +80,7 @@ async function register(res, password) {
         res.end('Client registered')
     } else {
         res.writeHead(400)
-        res.end('Error: could not register')
+        res.end('Error: Could not register')
     }
 }
 

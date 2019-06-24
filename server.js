@@ -67,6 +67,12 @@ function verifyMessage(message, publicKey) {
 }
 
 async function register(res, password) {
+    if (!!clientPasswordHash) {
+        res.writeHead(401)
+        res.end('Error: client already registered register')
+        return
+    }
+
     clientPasswordHash = await hashPassword(password)
 
     if (clientPasswordHash) {

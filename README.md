@@ -2,7 +2,7 @@
 1) Install Node v12.4.0
 2) Generate a Private Key
 ```
-cd DrewWallace-2019/
+cd secure-server-example/
 openssl genrsa -des3 -out server.key 1024
 ```
 3) Generate a CSR (Certificate Signing Request)
